@@ -342,3 +342,25 @@ faic-node/
 │   └── install.ps1                # Windows安装脚本
 └── src/                           # 源代码
 ```
+
+先上且默认零知识证明，用户可选择全动态加密。
+单一节点无法满足用户需求时，可使用VLLM框架引入更多算力节点共同完成任务。
+
+```加密模式切换架构
+class EncryptionStrategy:
+    def __init__(self):
+        self.current_mode = "ZK-STARK"  # 默认使用ZK-STARK
+        self.available_modes = {
+            "ZK-STARK": ZKStarkProcessor(),
+            "FHE": HomomorphicProcessor()  # 全同态加密处理器
+        }
+    
+    def switch_mode(self, mode, session_id):
+        if mode not in self.available_modes:
+            raise UnsupportedModeError(f"不支持的加密模式: {mode}")
+            
+        # 记录模式切换
+        self.log_mode_switch(session_id, self.current_mode, mode)
+        self.current_mode = mode
+        return True
+```
