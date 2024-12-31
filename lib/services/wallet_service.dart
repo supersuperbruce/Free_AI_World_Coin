@@ -3,8 +3,9 @@ import 'package:web3dart/web3dart.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:convert/convert.dart';
 import '../models/wallet.dart';
+import 'package:flutter/foundation.dart';
 
-class WalletService {
+class WalletService extends ChangeNotifier {
   final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
   static const String _mnemonicKey = 'wallet_mnemonic';
   static const String _privateKeyKey = 'wallet_private_key';
@@ -31,7 +32,8 @@ class WalletService {
     // 安全存储助记词和私钥
     await _secureStorage.write(key: _mnemonicKey, value: mnemonic);
     await _secureStorage.write(
-        key: _privateKeyKey, value: credentials.privateKeyInt.toRadixString(16));
+        key: _privateKeyKey,
+        value: credentials.privateKeyInt.toRadixString(16));
 
     return wallet;
   }
@@ -59,5 +61,10 @@ class WalletService {
       privateKey: privateKey,
       mnemonic: mnemonic,
     );
+  }
+
+  // 添加通知方法
+  void notifyWalletChanged() {
+    notifyListeners();
   }
 }

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
-import 'screens/create_wallet_screen.dart';
+import 'package:provider/provider.dart';
+import 'screens/welcome_screen.dart';
+import 'services/wallet_service.dart';
 
 void main() {
   runApp(const MyApp());
@@ -10,13 +12,18 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'FAIC Wallet',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-        useMaterial3: true,
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => WalletService()),
+      ],
+      child: MaterialApp(
+        title: 'FAIC Wallet',
+        theme: ThemeData(
+          primarySwatch: Colors.blue,
+          useMaterial3: true,
+        ),
+        home: const WelcomeScreen(),
       ),
-      home: const CreateWalletScreen(),
     );
   }
 }
