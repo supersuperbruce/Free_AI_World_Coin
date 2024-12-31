@@ -10,6 +10,7 @@ class ImportWalletScreen extends StatefulWidget {
 }
 
 class _ImportWalletScreenState extends State<ImportWalletScreen> {
+  final _walletService = WalletService();
   final _mnemonicController = TextEditingController();
   bool _isLoading = false;
   bool _agreedToTerms = false;
@@ -35,11 +36,10 @@ class _ImportWalletScreenState extends State<ImportWalletScreen> {
     });
 
     try {
-      // TODO: 实现导入钱包逻辑
-      // final wallet = await _walletService.importWallet(mnemonic);
+      // 使用 WalletService 导入钱包
+      final wallet = await _walletService.importWalletFromMnemonic(mnemonic);
 
       if (mounted) {
-        // 导入成功后直接进入主页
         Navigator.of(context).pushAndRemoveUntil(
           MaterialPageRoute(
             builder: (context) => const HomeScreen(),
