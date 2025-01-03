@@ -74,3 +74,21 @@ FAIC Node 采用分层的网络协议架构，主要包含以下几个核心组�
 - 存储适配器 (StorageAdapter)
 - 网络适配器 (NetworkAdapter)
 - 加密适配器 (CryptoAdapter)
+
+## 5. API规范(API Specification)(要求openapi要考虑p2p网络特性、区块链特性)
+### 5.1 OpenAPI 规范实现
+  - RESTful API 设计
+  - API 版本控制
+  - 认证与授权
+  - 请求/响应格式
+  - 错误处理
+### 5.2 API 文档生成
+  - 使用 swagger-ui 提供交互式文档
+  - 支持文档导出(JSON/YAML格式)
+  - 集成测试用例
+  - 示例代码生成
+### 5.3 API 安全
+  - 认证机制
+  - 访问控制
+  - 速率限制
+  - 数据加密
