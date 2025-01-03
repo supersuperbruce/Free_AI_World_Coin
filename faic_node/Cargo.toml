@@ -1,0 +1,54 @@
+[package]
+name = "faic_node"
+version = "0.0.1"
+edition = "2021"
+authors = ["FAIC Team"]
+description = "FAIC Node Implementation"
+
+[dependencies]
+# 异步运行时
+tokio = { version = "1.0", features = ["full"] }
+async-trait = "0.1"
+
+# 网络相关
+libp2p = { version = "0.54.1", features = ["kad", "gossipsub", "noise", "tcp", "websocket", "identify"] }
+futures = "0.3"
+
+# 序列化
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# 日志
+tracing = "0.1"
+tracing-subscriber = "0.3"
+opentelemetry = { version = "0.27.1", features = ["rt-tokio"] }
+prometheus = "0.13"
+
+# 错误处理
+thiserror = "2.0.9"
+anyhow = "1.0"
+
+# 加密
+sha2 = "0.10"
+ed25519-dalek = "2.0"
+bip32 = "0.5"           # BIP32 标准实现
+bip39 = "2.0"          # BIP39 助记词标准
+tiny-bip39 = "2.0.0"     # BIP39 助记词生成
+zk-stark = "0.0.1"       # ZK-STARK 实现
+tfhe = { version = "0.10.0", features = ["boolean", "shortint", "integer"] }  # Zama 的 TFHE-rs 实现
+concrete = "0.2"       # Zama 的另一个 FHE 实现
+arti-client = "0.25.0" # Tor 官方的 Rust 实现
+tor-rtcompat = "0.25.0"  # Tor 异步运行时
+
+# API
+axum = { version = "0.8.1", features = ["ws"] }
+tower = "0.5.2"
+tower-http = { version = "0.6.2", features = ["trace", "cors"] }
+openapi = { version = "0.1", features = ["v3"] }
+tonic = "0.12.3"         # gRPC 支持
+
+[dev-dependencies]
+tokio-test = "0.4"
+jest = "0.0.0"           # Jest 测试框架
+mockall = "0.13.1"       # Mock 测试
+criterion = "0.5.1"      # 基准测试

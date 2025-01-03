@@ -14,7 +14,7 @@
 ## 1. 必要的核心层实现
 
 ### 1.1 接口定义 (Interfaces)
-
+文件位置：src/core/interface.rs
 ```rust
 /// P2P 网络核心接口
 pub trait P2PNetworkInterface {
@@ -89,12 +89,12 @@ pub enum NetworkMessage {
 ### 1.2 最小化可插拔组件
 
 ```rust
-// 1. 网络组件 (Network Components)
+// 1. 网络组件 (Network Components)  src/network/p2p.rs
 pub struct BasicNetwork {
    Node_list: Vec<NodeInfo>,
    connection_manager: ConnectionManager,
 }
-// 2. 共识组件 (Consensus Components)
+// 2. 共识组件 (Consensus Components)  src/consensus/pos_impl.rs
 pub struct SimpleConsensus {
    validators: Vec<ValidatorInfo>,
 }
@@ -102,14 +102,14 @@ pub struct SimpleConsensus {
 pub struct BasicCrypto {
    key_manager: KeyManager,
 }
-// 4. 验证组件 (Validation Components)
+// 4. 验证组件 (Validation Components)  src/validation/validator.rs
 pub struct ValidationManager {
    fast_validator: FastValidator,
    block_validator: BlockValidator,
    final_validator: FinalValidator,
    zk_stark: ZkStarkValidator,
 }
-// 5. 计算组件 (Compute Components)
+// 5. 计算组件 (Compute Components)  src/core/compute.rs (待创建)
 pub struct ComputeManager {
    model_manager: ModelManager,
    task_scheduler: TaskScheduler,
@@ -148,6 +148,7 @@ pub struct ComputeService {
 ```
 ## 2.错误处理和日志记录的标准接口
 ### 2.1 错误类型定义
+文件位置：src/core/error.rs
 ```rust
 /// 标准错误类型枚举
 #[derive(Debug, Clone)]
@@ -200,6 +201,7 @@ pub enum ValidationErrorKind {
 ```
 
 ### 2.2 日志接口定义
+文件位置：src/core/logger.rs
 ```rust
 /// 日志级别
 #[derive(Debug, Clone, Copy)]
