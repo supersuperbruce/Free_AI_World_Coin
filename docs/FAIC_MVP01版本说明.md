@@ -11,10 +11,77 @@
 
 # MVP001 开发计划
 
-## 1. 必要的核心层实现
+## 项目框架
+```mermaid
+graph TD
+	faic_core-->network网络模块
+	faic_core-->wallet钱包模块
+	faic_core-->transaction交易模块
+	faic_core-->ledger账本模块
+	faic_core-->consensus共识模块
+	faic_core-->error&log错误与日志模块
+   faic_core-->types数据类型模块
+   faic_core-->api接口模块
+   faic_core-->smartcontract智能合约模块
+   security安全模块-->zk-stark零知识证明
+   smartcontract智能合约模块-->governance治理模块
+   smartcontract智能合约模块-->3rd_apps第三方应用
+   governance治理模块-->reward奖励模块
+   governance治理模块-->紧急暂停机制
+   governance治理模块-->社区
+   reward奖励模块-->pos质押验证奖励
+   reward奖励模块-->smartcontract智能合约奖励
+   reward奖励模块-->3rd_apps第三方应用奖励
+   3rd_apps第三方应用-->AIES外包服务模块
+   3rd_apps第三方应用-->AI模型NFT市场
+   3rd_apps第三方应用-->TokenSwap代币交换
+   3rd_apps第三方应用-->ComputeSupply算力供应
+```
+
+
+## FAIC代币经济模型
+1、FAIC数量不限定总额。
+2、每年年底FAIC增发3%，这3%用于奖励智能合约模块的参与者。
+3、pos质押和智能合约为参与者创造收入时，收取0.3%或更高的手续费。未创造收入时，不收取手续费。
+4、应当考虑到后续补充的机制，不需要开发，但是需要考虑到可扩展性：
+  1、添加代币销毁机制
+  2、挖矿机制
+  3、流动性管理策略
+  4、紧急暂停机制
+  5、治理机制以调整参数
+
+## FAIC奖励办法（测试暂行办法）
+1、提供算力并获得验证：获得1FAIC/1tokens的奖励
+2、提供路由服务并获得验证：获得15FAIC/1request的奖励
+3、验证其他节点提供算力或路由服务：获得30FAIC/1request的奖励
+4、算力节点在线时长并获得验证：获得60FAIC/1hour的奖励
+5、验证节点在线时长并获得验证：获得60FAIC/1hour的奖励
+6、用户在官网捐赠给FAIW公共钱包，即可获得FAIC。
+7、路由服务奖励机制：
+   a) 在线时长：10FAIC/1hour，每半小时遍历一次节点。
+   b) 成功匹配次数：3FAIC/1request
+
+
+### 数据类型
+
+#### Node
+```rust
+Node 数据类型： // todo 
+
+```
+
+#### Amount
+```rust
+Amount 数据类型： // done
+   基础数据类型：biguint
+   DECIMALS: u32 = 8; //最小单位: 1 (0.00000001 FAIC),实际精度:8位小数。采用doge的精度
+   ONE_FAIC: &'static str = "100000000"; // 10^8
+   MAX_AMOUNT: &'static str = "340282366920938463463374607431768211455"; // 2^128 - 1
+   最小交易额 0.00000001 FAIC = 1
+```
 
 ### 1.1 接口定义 (Interfaces)
-文件位置：src/core/interface.rs
+
 ```rust
 /// P2P 网络核心接口
 pub trait P2PNetworkInterface {
@@ -50,8 +117,6 @@ pub struct P2PNetwork {
    validation_manager: ValidationManager, 
    // 奖励管理
    reward_manager: RewardManager,        
-   // 安全管理(ZK-STARK和FHE)
-   security_manager: SecurityManager,     
 }
 
 /// 消息类型
@@ -86,69 +151,27 @@ pub enum NetworkMessage {
 }
 ```
 
-### 1.2 最小化可插拔组件
 
-```rust
-// 1. 网络组件 (Network Components)  src/network/p2p.rs
-pub struct BasicNetwork {
-   Node_list: Vec<NodeInfo>,
-   connection_manager: ConnectionManager,
-}
-// 2. 共识组件 (Consensus Components)  src/consensus/pos_impl.rs
-pub struct SimpleConsensus {
-   validators: Vec<ValidatorInfo>,
-}
-// 3. 安全组件 (Security Components)
-pub struct BasicCrypto {
-   key_manager: KeyManager,
-}
-// 4. 验证组件 (Validation Components)  src/validation/validator.rs
-pub struct ValidationManager {
-   fast_validator: FastValidator,
-   block_validator: BlockValidator,
-   final_validator: FinalValidator,
-   zk_stark: ZkStarkValidator,
-}
-// 5. 计算组件 (Compute Components)  src/core/compute.rs (待创建)
-pub struct ComputeManager {
-   model_manager: ModelManager,
-   task_scheduler: TaskScheduler,
-   resource_monitor: ResourceMonitor,
-   vllm_integration: VLLMIntegration,
-}
-```
 
 ### 1.3 必要的服务实现
 
 ```rust
-// 1. 钱包服务
+// 1. wallet钱包模块
 pub struct WalletService {
    crypto: Arc<BasicCrypto>,
    network: Arc<BasicNetwork>,
 }
-// 2. 交易服务
+// 2. transaction交易模块
 pub struct TransactionService {
    network: Arc<BasicNetwork>,
    consensus: Arc<SimpleConsensus>,
 }
 
-// 3. 奖励服务
-pub struct RewardService {
-    reward_manager: Arc<RewardManager>,
-    validation_manager: Arc<ValidationManager>,
-    consensus: Arc<SimpleConsensus>,
-}
-
-// 4. 计算服务
-pub struct ComputeService {
-   compute_manager: Arc<ComputeManager>,
-   validation_manager: Arc<ValidationManager>,
-   network: Arc<BasicNetwork>,
-}
+//3. reward奖励模块
 ```
 ## 2.错误处理和日志记录的标准接口
 ### 2.1 错误类型定义
-文件位置：src/core/error.rs
+文件位置：faic_node/src/error/error.rs
 ```rust
 /// 标准错误类型枚举
 #[derive(Debug, Clone)]

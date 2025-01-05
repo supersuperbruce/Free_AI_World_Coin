@@ -1,2 +1,0 @@
-# FAIC API 接口说明(FAIC_API)
-使用OPENAPI规范API接口

@@ -1,4 +1,4 @@
-use crate::security::crypto::Ed25519Crypto;
+use crate::{p2p::FAICNetwork, security::crypto::Ed25519Crypto};
 use libp2p::{
     core::PeerId,
     kad::record::Key,
@@ -25,7 +25,7 @@ pub struct WalletService {
 }
 
 impl WalletService {
-    pub fn new(crypto: Arc<Ed25519Crypto>, network: Arc<faic_network>) -> Self {
+    pub fn new(crypto: Arc<Ed25519Crypto>, network: Arc<FAICNetwork>) -> Self {
         info!("初始化HD钱包服务");
         Self { crypto, network }
     }

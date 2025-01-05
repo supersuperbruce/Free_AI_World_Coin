@@ -1,5 +1,5 @@
 # 区块链标准
-- BIP32、BIP39、BIP44、BIP47、BIP84 (HD钱包标准)
+- BIP32、BIP39、BIP44、BIP47、BIP84
 - PoS (共识机制)
 - rust-libp2p (P2P网络协议)
 
@@ -7,7 +7,6 @@
 - RESTful API
 - gRPC
 - WebSocket
-- OpenAPI 3.0
 
 # 加密标准
 - zk-STARKs
@@ -20,7 +19,6 @@
 - Noise Protocol
 
 # 测试标准
-- FAIC Testnet (自建测试网络)
 - Jest (单元测试)
 - Mock Service Worker (API测试)
 
@@ -28,3 +26,9 @@
 - Prometheus
 - Grafana
 - OpenTelemetry
+
+# 数据类型：
+num-bigint = "0.4"
+num-traits = "0.2"
+
+

@@ -6,7 +6,7 @@ use tracing::{info, warn, error};
 
 /// 交易服务实现
 pub struct TransactionService {
-    network: Arc<faic_network>,
+    network: Arc<FAICNetwork>,
     crypto: Arc<Ed25519Crypto>,  // 添加加密服务
 }
 
