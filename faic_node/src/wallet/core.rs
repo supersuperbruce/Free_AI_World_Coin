@@ -1,10 +1,9 @@
-use crate::{p2p::FAICNetwork, security::crypto::Ed25519Crypto};
+use crate::{network::p2p::FAICNetwork, security::crypto::Ed25519Crypto};
 use libp2p::{
     core::PeerId,
-    kad::record::Key,
+    kad::store::Key,
     swarm::{NetworkBehaviour,Swarm},
 };
-use crate::network::p2p::faic_network; 
 use crate::error::wallet::{WalletError, WalletResult};
 use std::sync::Arc;
 use std::str::FromStr;

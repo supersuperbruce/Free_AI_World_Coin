@@ -1,5 +1,47 @@
-### 新增内容
-1、FAIC数据类型：bigint，精度为小数点后8位。
+## 数据类型
+
+### Amount
+```rust
+Amount 数据类型： // done
+   基础数据类型：biguint
+   DECIMALS: u32 = 8; //最小单位: 1 (0.00000001 FAIC),实际精度:8位小数。采用doge的精度
+   ONE_FAIC: &'static str = "100000000"; // 10^8
+   MAX_AMOUNT: &'static str = "340282366920938463463374607431768211455"; // 2^128 - 1
+   最小交易额 0.00000001 FAIC = 1
+```
+
+
+## 项目框架
+```mermaid
+graph TD
+	faic_core-->network网络模块
+	faic_core-->wallet钱包模块
+	faic_core-->transaction交易模块
+	faic_core-->ledger账本模块
+	faic_core-->consensus共识模块
+	faic_core-->error&log错误与日志模块
+  faic_core-->types数据类型模块
+  faic_core-->api接口模块
+  faic_core-->smartcontract智能合约模块
+  faic_core-->crypto安全模块
+  crypto安全模块-->加密协议调度模块
+  加密协议调度模块-->zk-stark零知识证明
+  加密协议调度模块-->Ed25519加密算法
+  加密协议调度模块-->FHE全同态加密
+  smartcontract智能合约模块-->governance治理模块
+  smartcontract智能合约模块-->3rd_apps第三方应用
+  governance治理模块-->reward奖励模块
+  governance治理模块-->紧急暂停机制
+  governance治理模块-->社区
+  reward奖励模块-->pos质押验证奖励
+  reward奖励模块-->smartcontract智能合约奖励
+  reward奖励模块-->3rd_apps第三方应用奖励
+  3rd_apps第三方应用-->AIES外包服务模块
+  3rd_apps第三方应用-->AI模型NFT市场
+  3rd_apps第三方应用-->TokenSwap代币交换
+  3rd_apps第三方应用-->ComputeSupply算力供应
+```
+**项目框架重点说明：MVP001版本中，只开发实现核心目标的项目框架模块，与核心目标无关的模块暂时不开发。**
 
 ### FAIC代币经济模型
 1、FAIC数量不限定总额。

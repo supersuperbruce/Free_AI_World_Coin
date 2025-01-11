@@ -6,7 +6,9 @@ use serde::{Serialize, Deserialize};
 use crate::error::wallet::WalletError;
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
-pub struct Amount(BigUint);
+pub struct Amount {
+    value: BigUint,
+}
 
 impl Amount {
     pub const DECIMALS: u32 = 8;

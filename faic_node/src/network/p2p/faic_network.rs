@@ -1,127 +1,186 @@
+const TOPIC_NAME: &str = "/faic/1.0.0";
+
+use libp2p::{
+    kad::{
+        store::MemoryStore, Kademlia, KademliaConfig, KademliaEvent,
+        record::store::MemoryStore as KademliaMemoryStore,
+        QueryResult,
+    },
+    gossipsub::{
+        Gossipsub, GossipsubConfig, GossipsubEvent, 
+        MessageAuthenticity, IdentTopic
+    },
+    swarm::{NetworkBehaviour, Swarm, SwarmEvent},
+    development_transport,
+    StreamProtocol,
+    PeerId,
+};
+use crate::network::p2p::interface::P2PNetworkInterface;
 use async_trait::async_trait;
 use std::sync::Arc;
-use tokio::sync::RwLock;
-use tracing::{info, warn, error};
-use crate::network::p2p::{P2PNetworkInterface, P2PResult, NetworkError};
+use tracing::info;
+use crate::error::network::NetworkError;
+use tokio::sync::{mpsc, RwLock}; // Using tokio's async RwLock
+use futures::StreamExt; // For .next() on Swarm
 
-pub struct FAICNetwork {
-    node_list: Arc<RwLock<Vec<String>>>,
-    // 节点标识和基本信息
-    node_id: NodeId,
-    node_type: NodeType,
-    listen_addrs: Vec<Multiaddr>,
-    peers: Arc<RwLock<Vec<String>>>,
-    
-    // 网络组件
-    swarm: Swarm<FAICBehaviour>,
-    connection_manager: ConnectionManager,
-    message_handler: MessageHandler,
-    
-    // 状态管理
-    state_manager: StateManager,
-    
-    // 消息通道
-    message_tx: mpsc::Sender<NetworkMessage>,
-    message_rx: mpsc::Receiver<NetworkMessage>,
-    
-    // 配置参数
-    max_peers: usize,
-    min_peers: usize,
-    bootstrap_nodes: Vec<Multiaddr>,
-    discovery_interval: Duration,
-    
-    // 安全相关
-    security_manager: SecurityManager,
-    banned_peers: Arc<RwLock<Vec<NodeId>>>,
+// 定义复合行为结构，包含 Kademlia 和 Gossipsub 行为
+#[derive(NetworkBehaviour)]
+#[behaviour(out_event = "FAICNetworkEvent")]
+pub struct FAICBehaviour {
+    pub kad: Kademlia<MemoryStore>,
+    pub gossipsub: Gossipsub,
 }
 
+// 定义网络事件枚举
+pub enum FAICNetworkEvent {
+    Kad(KademliaEvent),
+    Gossipsub(GossipsubEvent),
+}
+
+// 定义主要的网络结构
+pub struct FAICNetwork {
+    swarm: Swarm<FAICBehaviour>,
+    peers: Arc<RwLock<Vec<PeerId>>>,
+    message_tx: mpsc::Sender<Vec<u8>>,
+    message_rx: mpsc::Receiver<Vec<u8>>,
+    topic: IdentTopic,
+}
+
+
 impl FAICNetwork {
-    pub async fn new() -> Self {
+    pub async fn new() -> Result<Self, NetworkError> {
         info!("初始化 P2P 网络");
-        Self {
+
+        // 生成节点密钥对
+        let local_key = identity::Keypair::generate_ed25519();
+        let local_peer_id = PeerId::from(local_key.public());
+        
+        // 初始化 Kademlia 用于节点发现
+        let store = MemoryStore::new(local_peer_id);
+        let kad_config = KademliaConfig::default();
+        let kad = Kademlia::new(local_peer_id, store, kad_config);
+
+        // 初始化 Gossipsub 用于消息传播
+        let gossipsub_config = GossipsubConfig::default();
+        let gossipsub = Gossipsub::new(
+            MessageAuthenticity::Signed(local_key.clone()),
+            gossipsub_config
+        ).map_err(|e| NetworkError::ProtocolError(e.to_string()))?;
+
+        // 创建网络行为实例
+        let behaviour = FAICBehaviour {
+            kad,
+            gossipsub,
+        };
+
+        // 创建并订阅主题
+        let topic = IdentTopic::new(TOPIC_NAME);
+        gossipsub.subscribe(&topic)?;
+
+        // let transport = libp2p::tcp::TcpTransport::new(libp2p::tcp::Config::default())
+        //     .upgrade()
+        //     .authenticate(libp2p::noise::NoiseConfig::xx(local_key.clone()).into_authenticated())
+        //     .multiplex(libp2p::yamux::YamuxConfig::default())
+        //     .boxed();
+
+        // 创建传输层
+        let transport = development_transport(local_key).await?;
+
+        // 创建 Swarm 用于管理网络行为
+        let swarm = Swarm::new(
+            transport,
+            behaviour,
+            local_peer_id,
+            libp2p::swarm::Config::with_tokio_executor()
+        );
+
+        let (tx, rx) = mpsc::channel(100);
+
+        Ok(Self {
+            swarm,
             peers: Arc::new(RwLock::new(Vec::new())),
+            message_tx: tx,
+            message_rx: rx,
+            topic,
+        })
+    }
+
+    /// 启动网络服务
+    pub async fn start(&mut self) -> Result<(), NetworkError> {
+        info!("启动 P2P 网络服务");
+
+        loop {
+            tokio::select! {
+                // 处理网络事件
+                event = self.swarm.next() => match event {
+                    Some(SwarmEvent::Behaviour(FAICNetworkEvent::Kad(kad_event))) => {
+                        self.handle_kad_event(kad_event).await?;
+                    }
+                    Some(SwarmEvent::Behaviour(FAICNetworkEvent::Gossipsub(gossip_event))) => {
+                        self.handle_gossip_event(gossip_event).await?;
+                    }
+                    _ => {}
+                },
+                // 处理接收到的消息
+                Some(message) = self.message_rx.recv() => {
+                    self.broadcast_message(message).await?;
+                }
+            }
         }
+    }
+
+    /// 处理 Kademlia 事件
+    async fn handle_kad_event(&mut self, event: KademliaEvent) -> Result<(), NetworkError> {
+        match event {
+            KademliaEvent::OutboundQueryCompleted { result, .. } => {
+                match result {
+                    QueryResult::GetClosestPeers(Ok(closest_peers)) => {
+                        // 更新已发现的对等节点列表
+                        let mut peer_list = self.peers.write().await;
+                        for peer_id in closest_peers.peers {
+                            if !peer_list.iter().any(|p| p == &peer_id) {
+                                info!("发现新节点: {:?}", peer_id);
+                                peer_list.push(peer_id);
+                            }
+                        }
+                    }
+                    _ => {}
+                }
+            }
+            _ => {}
+        }
+        Ok(())
+    }
+
+    /// 处理 Gossipsub 事件
+    async fn handle_gossip_event(&mut self, event: GossipsubEvent) -> Result<(), NetworkError> {
+        match event {
+            GossipsubEvent::Message { message, .. } => {
+                info!("收到消息: {:?}", message);
+                // 这里可以添加处理接收到的消息的逻辑
+            }
+            _ => {}
+        }
+        Ok(())
     }
 }
 
 #[async_trait]
 impl P2PNetworkInterface for FAICNetwork {
-    async fn discover_node_list(&self) -> P2PResult<Vec<String>> {
-        info!("开始节点发现");
-        match self.peers.read().await.clone() {
-            peers if !peers.is_empty() => {
-                info!("发现 {} 个节点", peers.len());
-                Ok(peers)
-            }
-            _ => {
-                warn!("未发现任何节点");
-                Err(P2PError::DiscoveryError("未发现任何节点".to_string()))
-            }
-        }
-    }
-
-    async fn connect_node(&self, node_id: &str) -> P2PResult<()> {
-        info!("连接节点: {}", node_id);
-        let mut peers = self.peers.write().await;
-        if !peers.contains(&node_id.to_string()) {
-            peers.push(node_id.to_string());
-            info!("节点连接成功: {}", node_id);
-            Ok(())
-        } else {
-            warn!("节点已连接: {}", node_id);
-            Err(P2PError::ConnectionError("节点已连接".to_string()))
-        }
-    }
-
-    async fn disconnect_node(&self, node_id: &str) -> P2PResult<()> {
-        info!("断开节点连接: {}", node_id);
-        let mut peers = self.peers.write().await;
-        if let Some(pos) = peers.iter().position(|x| x == node_id) {
-            peers.remove(pos);
-            info!("节点已断开连接: {}", node_id);
-            Ok(())
-        } else {
-            warn!("节点未连接: {}", node_id);
-            Err(P2PError::NodeNotFound(node_id.to_string()))
-        }
-    }
-
-    async fn broadcast_message(&self, message: Vec<u8>) -> P2PResult<()> {
-        info!("广播消息: {} 字节", message.len());
+    //获取已发现节点列表
+    async fn discover_node_list(&self) -> Result<Vec<String>, NetworkError> {
         let peers = self.peers.read().await;
-        if peers.is_empty() {
-            warn!("没有可用的节点进行广播");
-            return Err(P2PError::BroadcastError("没有可用的节点".to_string()));
-        }
-        // TODO: 实现实际的广播逻辑
+        Ok(peers.iter().map(|p| p.to_string()).collect())
+    }
+
+    //广播消息
+    async fn broadcast_message(&self, message: Vec<u8>) -> Result<(), NetworkError> {
+        self.swarm.behaviour_mut().gossipsub.publish(
+            self.topic.clone(),
+            message
+        ).map_err(|e| NetworkError::BroadcastError(e.to_string()))?;
         Ok(())
     }
 
-    async fn send_message(&self, node_id: &str, message: Vec<u8>) -> P2PResult<()> {
-        info!("发送消息到节点 {}: {} 字节", node_id, message.len());
-        let peers = self.peers.read().await;
-        if !peers.contains(&node_id.to_string()) {
-            error!("目标节点不存在: {}", node_id);
-            return Err(P2PError::NodeNotFound(node_id.to_string()));
-        }
-        // TODO: 实现实际的发送逻辑
-        Ok(())
-    }
-
-    async fn sync_state(&self) -> P2PResult<()> {
-        info!("同步节点状态");
-        // TODO: 实现状态同步逻辑
-        Ok(())
-    }
-
-    async fn get_node_state(&self, node_id: &str) -> P2PResult<()> {
-        info!("获取节点状态: {}", node_id);
-        let peers = self.peers.read().await;
-        if !peers.contains(&node_id.to_string()) {
-            error!("节点不存在: {}", node_id);
-            return Err(P2PError::NodeNotFound(node_id.to_string()));
-        }
-        // TODO: 实现获取节点状态逻辑
-        Ok(())
-    }
+    // ... 其他接口实现
 }

@@ -13,13 +13,19 @@ pub enum NetworkError {
     BroadcastError(String),
 
     #[error("节点离线")]
-    NodeOffline,
+    PeerOffline,
 
     #[error("超时错误: {0:?}")]
     Timeout(Duration),
 
+    #[error("DHT错误: {0}")]
+    DHTError(String),
+
+    #[error("Gossipsub错误: {0}")]
+    GossipsubError(String),
+
     #[error("节点未找到: {0}")]
-    NodeNotFound(String),
+    PeerNotFound(String),
 
     #[error("消息过大: {0} bytes")]
     MessageTooLarge(usize),
@@ -29,6 +35,12 @@ pub enum NetworkError {
 
     #[error("状态同步失败: {0}")]
     StateSyncError(String),
+
+    #[error("地址解析错误: {0}")]
+    AddressParseError(String),
+    
+    #[error("监听错误: {0}")]
+    ListenError(String),
 }
 
-pub type P2PResult<T> = Result<T, P2PError>;
+pub type NetworkResult<T> = Result<T, NetworkError>;
