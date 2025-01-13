@@ -43,6 +43,22 @@ impl Amount {
     pub fn value(&self) -> &BigUint {
         &self.value
     }
+
+    /// 将 Amount 转换为字符串，包含八位小数
+    pub fn to_string(&self) -> String {
+        let value_str = self.value.to_string();
+        let len = value_str.len();
+
+        if len <= Self::DECIMALS as usize {
+            // 如果数值小于 1 FAIC，需要在前面补零
+            format!("0.{:0>8}", value_str)
+        } else {
+            // 插入小数点
+            let (integer_part, decimal_part) = value_str.split_at(len - Self::DECIMALS as usize);
+            format!("{}.{}", integer_part, decimal_part)
+        }
+    }
+
 }
 
 #[cfg(test)]
@@ -71,4 +87,19 @@ mod tests {
         assert!(invalid_amount.is_err());
 
     }
+
+    #[test]
+    fn test_amount_to_string() {
+        // 测试数值小于 1 FAIC 的情况
+        let amount = Amount::from_biguint(BigUint::from(1234567u64)).unwrap();
+        assert_eq!(amount.to_string(), "0.01234567");
+
+        // 测试数值大于 1 FAIC 的情况
+        let amount = Amount::from_biguint(BigUint::from(123456789u64)).unwrap();
+        assert_eq!(amount.to_string(), "1.23456789");
+
+        // 测试数值为整数 FAIC 的情况
+        let amount = Amount::from_biguint(BigUint::from(100_000_000u64)).unwrap();
+        assert_eq!(amount.to_string(), "1.00000000");
+    }    
 }
